@@ -29,21 +29,39 @@ export default function Home() {
   const [reviewPopupOpen, setReviewPopupOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
 
-  // Handle WhatsApp return logic
+  // Handle WhatsApp return logic - show review popup when user returns to tab
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const visitedWhatsApp = localStorage.getItem('visitedWhatsApp')
+        const reviewShown = localStorage.getItem('reviewShown')
+
+        // Check if user returned from WhatsApp
+        if (visitedWhatsApp === 'true' && reviewShown !== 'true') {
+          // Small delay to ensure page is loaded
+          const timer = setTimeout(() => {
+            setReviewPopupOpen(true)
+            // Reset the WhatsApp flag
+            localStorage.removeItem('visitedWhatsApp')
+          }, 500)
+          return () => clearTimeout(timer)
+        }
+      }
+    }
+
+    // Also check on initial load
     const visitedWhatsApp = localStorage.getItem('visitedWhatsApp')
     const reviewShown = localStorage.getItem('reviewShown')
-
-    // Check if user returned from WhatsApp
     if (visitedWhatsApp === 'true' && reviewShown !== 'true') {
-      // Small delay to ensure page is loaded
       const timer = setTimeout(() => {
         setReviewPopupOpen(true)
-        // Reset the WhatsApp flag
         localStorage.removeItem('visitedWhatsApp')
       }, 1500)
       return () => clearTimeout(timer)
     }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
   // Handle hash changes for privacy/offer
@@ -62,28 +80,10 @@ export default function Home() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  // Secret admin access (click logo 5 times)
-  const [logoClicks, setLogoClicks] = useState(0)
-  useEffect(() => {
-    if (logoClicks >= 5) {
-      setAdminOpen(true)
-      setLogoClicks(0)
-    }
-  }, [logoClicks])
-
-  // Add click listener to logo for admin access
-  useEffect(() => {
-    const logo = document.querySelector('a[href="#home"]')
-    if (logo) {
-      const handleLogoClick = (e: Event) => {
-        // Only count if it's a quick succession of clicks
-        setLogoClicks((prev) => prev + 1)
-        setTimeout(() => setLogoClicks(0), 2000)
-      }
-      logo.addEventListener('click', handleLogoClick)
-      return () => logo.removeEventListener('click', handleLogoClick)
-    }
-  }, [])
+  // Admin access handler
+  const handleAdminAccess = () => {
+    setAdminOpen(true)
+  }
 
   const handleFormSuccess = () => {
     setThankYouOpen(true)
@@ -105,7 +105,7 @@ export default function Home() {
 
   return (
     <>
-      <Header />
+      <Header onAdminAccess={handleAdminAccess} />
       <main>
         <Hero />
         <About />

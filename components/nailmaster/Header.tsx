@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 
@@ -17,9 +17,15 @@ const navLinks = [
 
 const WHATSAPP_URL = 'https://wa.me/79001234567?text=Здравствуйте!%20Хочу%20узнать%20о%20курсах'
 
-export default function Header() {
+interface HeaderProps {
+  onAdminAccess?: () => void
+}
+
+export default function Header({ onAdminAccess }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [logoClicks, setLogoClicks] = useState(0)
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -45,6 +51,34 @@ export default function Header() {
     setIsMobileMenuOpen(false)
   }
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    
+    // Clear previous timer
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current)
+    }
+    
+    const newClicks = logoClicks + 1
+    setLogoClicks(newClicks)
+    
+    // Check if 5 clicks reached
+    if (newClicks >= 5) {
+      setLogoClicks(0)
+      if (onAdminAccess) {
+        onAdminAccess()
+      }
+    } else {
+      // Reset clicks after 2 seconds of no clicking
+      clickTimerRef.current = setTimeout(() => {
+        setLogoClicks(0)
+      }, 2000)
+    }
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <>
       <header
@@ -55,10 +89,13 @@ export default function Header() {
         <div className="container mx-auto px-5 md:px-10">
           <div className="flex items-center justify-between h-[72px] gap-6">
             {/* Logo */}
-            <Link href="#home" className="flex items-center gap-2 font-serif text-2xl font-semibold text-foreground">
+            <button
+              onClick={handleLogoClick}
+              className="flex items-center gap-2 font-serif text-2xl font-semibold text-foreground cursor-pointer"
+            >
               <span className="text-3xl">💅</span>
               <span>NailMaster</span>
-            </Link>
+            </button>
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex gap-8">

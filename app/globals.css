@@ -1,0 +1,168 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* NailMaster Color Palette */
+  --color-white: #ffffff;
+  --color-cream: #faf8f5;
+  --color-beige: #f5f0e8;
+  --color-beige-dark: #e8e0d4;
+  --color-champagne: #f7e7ce;
+  --color-gold: #c9a962;
+  --color-gold-dark: #b8983f;
+  --color-coral: #e8a090;
+  --color-pink: #f5d5d0;
+  --color-text: #2d2a26;
+  --color-text-light: #6b6560;
+  --color-text-muted: #9a948c;
+  --color-success: #4a9d6e;
+  --color-whatsapp: #25d366;
+  
+  /* Design Tokens */
+  --background: var(--color-white);
+  --foreground: var(--color-text);
+  --card: var(--color-white);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-gold);
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-cream);
+  --secondary-foreground: var(--color-text);
+  --muted: var(--color-beige);
+  --muted-foreground: var(--color-text-light);
+  --accent: var(--color-champagne);
+  --accent-foreground: var(--color-gold-dark);
+  --destructive: #e74c3c;
+  --destructive-foreground: var(--color-white);
+  --border: var(--color-beige-dark);
+  --input: var(--color-beige-dark);
+  --ring: var(--color-gold);
+  
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --font-sans: 'Montserrat', system-ui, sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-full: 9999px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    line-height: 1.6;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-semibold leading-tight text-foreground;
+  }
+  
+  h1 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+  
+  h2 {
+    @apply text-2xl md:text-3xl lg:text-4xl;
+  }
+  
+  h3 {
+    @apply text-xl md:text-2xl;
+  }
+  
+  p {
+    @apply text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-beige-dark);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold);
+}
+
+/* Selection */
+::selection {
+  background: var(--color-champagne);
+  color: var(--color-text);
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.6s ease forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease forwards;
+}

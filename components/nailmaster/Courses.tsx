@@ -4,10 +4,22 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Clock, Video, FileText, Calendar, MessageCircle, PhoneCall, Infinity } from 'lucide-react'
+import { useContent, useCourses } from '@/context/SiteDataContext'
 
 type CourseKey = 'start' | 'pro' | 'vip'
 
-const courses: Record<CourseKey, {
+const courseFeatureIcons: Record<string, typeof Clock> = {
+  clock: Clock,
+  video: Video,
+  file: FileText,
+  calendar: Calendar,
+  message: MessageCircle,
+  phone: PhoneCall,
+  infinity: Infinity,
+}
+
+// Default course data for SSR
+const defaultCourses: Record<CourseKey, {
   badge: string
   badgeClass: string
   name: string
@@ -22,7 +34,7 @@ const courses: Record<CourseKey, {
     badge: 'Для новичков',
     badgeClass: 'bg-muted text-muted-foreground',
     name: 'Курс START',
-    description: 'Идеальный выбор для тех, кто только начинает свой путь в маникюре. Вы освоите базовые техники и сможете делать маникюр себе и близким.',
+    description: 'Идеальный выбор для тех, кто только начинает свой путь в маникюре.',
     modules: [
       'Модуль 1: Инструменты и материалы',
       'Модуль 2: Гигиена и стерилизация',
@@ -45,7 +57,7 @@ const courses: Record<CourseKey, {
     badge: 'Популярный выбор',
     badgeClass: 'bg-primary text-primary-foreground',
     name: 'Курс PRO',
-    description: 'Полная программа для тех, кто хочет стать профессиональным мастером маникюра и начать зарабатывать. Включает все техники и бизнес-модуль.',
+    description: 'Полная программа для тех, кто хочет стать профессиональным мастером маникюра.',
     modules: [
       'Все модули курса START',
       'Модуль 7: Аппаратный маникюр',
@@ -70,7 +82,7 @@ const courses: Record<CourseKey, {
     badge: 'Премиум',
     badgeClass: 'bg-gradient-to-r from-primary to-accent text-foreground',
     name: 'Курс VIP',
-    description: 'Максимальный формат с индивидуальным сопровождением. Личные созвоны, расширенная программа и пожизненный доступ к материалам.',
+    description: 'Максимальный формат с индивидуальным сопровождением.',
     modules: [
       'Все модули курса PRO',
       'Модуль 13: Наращивание ногтей',
@@ -99,9 +111,46 @@ const tabs: { key: CourseKey; label: string }[] = [
   { key: 'vip', label: 'VIP' },
 ]
 
+const badgeConfig: Record<CourseKey, { badge: string; badgeClass: string }> = {
+  start: { badge: 'Для новичков', badgeClass: 'bg-muted text-muted-foreground' },
+  pro: { badge: 'Популярный выбор', badgeClass: 'bg-primary text-primary-foreground' },
+  vip: { badge: 'Премиум', badgeClass: 'bg-gradient-to-r from-primary to-accent text-foreground' },
+}
+
 export default function Courses() {
   const [activeTab, setActiveTab] = useState<CourseKey>('start')
-  const course = courses[activeTab]
+  const { content, isLoading: contentLoading } = useContent()
+  const { courses: apiCourses, isLoading: coursesLoading } = useCourses()
+
+  // Get content from API or defaults
+  const title = content?.courses_title || 'Наши курсы'
+  const subtitle = content?.courses_subtitle || 'Выберите программу обучения'
+
+  // Build course data from API or use defaults
+  const getCourseData = (key: CourseKey) => {
+    const defaultData = defaultCourses[key]
+    const apiData = apiCourses?.[key]
+
+    if (!apiData) return defaultData
+
+    return {
+      badge: badgeConfig[key].badge,
+      badgeClass: badgeConfig[key].badgeClass,
+      name: apiData.name || defaultData.name,
+      description: apiData.description || defaultData.description,
+      modules: defaultData.modules, // Keep default modules for now
+      features: apiData.features?.map((f, i) => ({
+        icon: defaultData.features[i]?.icon || Clock,
+        label: f,
+      })) || defaultData.features,
+      priceOld: apiData.old_price ? formatPrice(apiData.old_price) : defaultData.priceOld,
+      priceCurrent: apiData.price ? formatPrice(apiData.price) : defaultData.priceCurrent,
+      image: apiData.image || defaultData.image,
+    }
+  }
+
+  const course = getCourseData(activeTab)
+  const isLoading = contentLoading || coursesLoading
 
   return (
     <section id="courses" className="py-20 md:py-[100px] bg-secondary">
@@ -111,9 +160,9 @@ export default function Courses() {
           <span className="inline-block px-4 py-1.5 bg-accent text-accent-foreground text-[13px] font-semibold uppercase tracking-wider rounded-full mb-4">
             Курсы
           </span>
-          <h2 className="mb-4 text-balance">Выберите свой путь к успеху</h2>
+          <h2 className="mb-4 text-balance">{title}</h2>
           <p className="text-[17px] max-w-[600px] mx-auto">
-            Три формата обучения для разных целей и возможностей
+            {subtitle}
           </p>
         </div>
 
@@ -149,8 +198,8 @@ export default function Courses() {
               <div className="mb-6">
                 <h4 className="text-base font-semibold text-foreground mb-3">Программа курса:</h4>
                 <ul className="grid gap-2">
-                  {course.modules.map((module) => (
-                    <li key={module} className="flex items-start gap-2 text-[15px] text-muted-foreground">
+                  {course.modules.map((module, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-[15px] text-muted-foreground">
                       <span className="text-primary font-bold">•</span>
                       {module}
                     </li>
@@ -160,9 +209,9 @@ export default function Courses() {
 
               {/* Features */}
               <div className="flex flex-wrap gap-4 mb-8">
-                {course.features.map((feature) => (
+                {course.features.map((feature, idx) => (
                   <div
-                    key={feature.label}
+                    key={idx}
                     className="flex items-center gap-2 px-4 py-2 bg-muted rounded-full text-sm"
                   >
                     <feature.icon className="w-4 h-4 text-primary" />
@@ -187,7 +236,7 @@ export default function Courses() {
             </div>
 
             {/* Image */}
-            <div className="rounded-xl overflow-hidden">
+            <div className="rounded-xl overflow-hidden relative">
               <Image
                 src={course.image}
                 alt={course.name}
@@ -195,10 +244,18 @@ export default function Courses() {
                 height={450}
                 className="w-full h-full object-cover aspect-[4/3]"
               />
+              {isLoading && (
+                <div className="absolute inset-0 bg-muted animate-pulse" />
+              )}
             </div>
           </div>
         </div>
       </div>
     </section>
   )
+}
+
+function formatPrice(price: string): string {
+  const num = parseInt(price.replace(/\D/g, ''), 10)
+  return num.toLocaleString('ru-RU').replace(/,/g, ' ')
 }

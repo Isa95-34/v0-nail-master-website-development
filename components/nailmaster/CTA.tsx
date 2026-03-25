@@ -1,17 +1,29 @@
-import Link from 'next/link'
+'use client'
 
-const WHATSAPP_URL = 'https://wa.me/79001234567?text=Здравствуйте!%20Хочу%20записаться%20на%20консультацию'
+import Link from 'next/link'
+import { useContent, useContacts } from '@/context/SiteDataContext'
 
 export default function CTA() {
+  const { content } = useContent()
+  const { contacts } = useContacts()
+
+  // Default values
+  const title = content?.cta_title || 'Готовы начать свой путь?'
+  const subtitle = content?.cta_subtitle || 'Запишитесь на бесплатную консультацию и получите подробную программу курса'
+  const whatsappUrl = contacts?.whatsapp || 'https://wa.me/79001234567'
+  const whatsappMessage = contacts?.whatsapp_message || 'Здравствуйте! Хочу узнать о курсах'
+
+  const fullWhatsappUrl = `${whatsappUrl}?text=${encodeURIComponent(whatsappMessage)}`
+
   return (
     <section className="py-20 bg-gradient-to-br from-primary to-[#b8983f]">
       <div className="container mx-auto px-5 md:px-10">
         <div className="text-center max-w-[700px] mx-auto">
           <h2 className="text-white mb-4 text-balance">
-            Готовы начать свой путь к успеху?
+            {title}
           </h2>
           <p className="text-white/90 text-lg mb-8">
-            Запишитесь на бесплатную консультацию и узнайте, какой курс подойдёт именно вам
+            {subtitle}
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link
@@ -21,7 +33,7 @@ export default function CTA() {
               Записаться на консультацию
             </Link>
             <a
-              href={WHATSAPP_URL}
+              href={fullWhatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-medium rounded-full border-[1.5px] border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all"

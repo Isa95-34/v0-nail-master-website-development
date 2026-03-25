@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import Modal from './Modal'
 import { 
   Trash2, Star, AlertTriangle, FileText, BookOpen, 
-  Phone, Image, MessageSquare, Users, Save, Plus, 
-  Check, X, Edit2, ChevronDown, LogOut
+  Phone, Image as ImageIcon, MessageSquare, Users, Save, Plus, 
+  Check, X, Edit2, ChevronDown, LogOut, Upload, Loader2
 } from 'lucide-react'
+import Image from 'next/image'
 
 interface AdminPanelProps {
   isOpen: boolean
@@ -55,7 +56,7 @@ interface DBData {
   applications: Application[]
 }
 
-type Tab = 'content' | 'courses' | 'contacts' | 'reviews' | 'applications'
+type Tab = 'content' | 'courses' | 'contacts' | 'images' | 'reviews' | 'applications'
 
 const ADMIN_PASSWORD = 'admin123'
 
@@ -135,6 +136,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     { id: 'content', label: 'Контент', icon: <FileText className="w-4 h-4" /> },
     { id: 'courses', label: 'Курсы', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'contacts', label: 'Контакты', icon: <Phone className="w-4 h-4" /> },
+    { id: 'images', label: 'Изображения', icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'reviews', label: 'Отзывы', icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'applications', label: 'Заявки', icon: <Users className="w-4 h-4" /> },
   ]
@@ -221,6 +223,9 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
               )}
               {activeTab === 'contacts' && (
                 <ContactsEditor data={data} onSave={saveData} saving={saving} />
+              )}
+              {activeTab === 'images' && (
+                <ImagesEditor data={data} onSave={saveData} saving={saving} authHeaders={authHeaders} />
               )}
               {activeTab === 'reviews' && (
                 <ReviewsEditor authHeaders={authHeaders} />
@@ -396,7 +401,7 @@ function CoursesEditor({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Старая цена (rub)</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">��тарая цена (rub)</label>
                   <input
                     type="text"
                     value={course.old_price}
@@ -502,6 +507,187 @@ function ContactsEditor({
         <Save className="w-4 h-4" />
         {saving ? 'Сохранение...' : 'Сохранить контакты'}
       </button>
+    </div>
+  )
+}
+
+// Images Editor Component
+function ImagesEditor({ 
+  data, 
+  onSave, 
+  saving,
+  authHeaders 
+}: { 
+  data: DBData
+  onSave: (updates: Partial<DBData>) => void
+  saving: boolean
+  authHeaders: () => Record<string, string>
+}) {
+  const [images, setImages] = useState(data.images)
+  const [uploading, setUploading] = useState(false)
+  const [uploadType, setUploadType] = useState<'gallery' | 'hero' | 'about'>('gallery')
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', uploadType)
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) throw new Error('Upload failed')
+
+      const { url } = await res.json()
+
+      if (uploadType === 'gallery') {
+        const gallery = [...(images.gallery as string[] || []), url]
+        const newImages = { ...images, gallery }
+        setImages(newImages)
+        onSave({ images: newImages })
+      } else if (uploadType === 'hero') {
+        const newImages = { ...images, hero: url }
+        setImages(newImages)
+        onSave({ images: newImages })
+      } else if (uploadType === 'about') {
+        const newImages = { ...images, about: url }
+        setImages(newImages)
+        onSave({ images: newImages })
+      }
+    } catch (err) {
+      console.error('Upload error:', err)
+      alert('Ошибка загрузки изображения')
+    }
+    setUploading(false)
+    e.target.value = ''
+  }
+
+  const handleDeleteGalleryImage = async (url: string) => {
+    if (!confirm('Удалить изображение?')) return
+    
+    try {
+      await fetch('/api/upload', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+
+      const gallery = (images.gallery as string[] || []).filter(img => img !== url)
+      const newImages = { ...images, gallery }
+      setImages(newImages)
+      onSave({ images: newImages })
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert('Ошибка удаления')
+    }
+  }
+
+  const handleImageUrlChange = (type: 'hero' | 'about', url: string) => {
+    const newImages = { ...images, [type]: url }
+    setImages(newImages)
+  }
+
+  const handleSaveUrls = () => {
+    onSave({ images })
+  }
+
+  const galleryImages = images.gallery as string[] || []
+
+  return (
+    <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
+      {/* Hero & About Images */}
+      <div className="space-y-4">
+        <h4 className="text-sm font-semibold text-foreground">Основные изображения</h4>
+        
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Hero изображение</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={(images.hero as string) || ''}
+              onChange={(e) => handleImageUrlChange('hero', e.target.value)}
+              placeholder="/images/hero.jpg"
+              className="flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+            />
+            <label className="px-3 py-2 text-sm font-medium rounded-lg bg-muted hover:bg-muted/80 cursor-pointer flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { setUploadType('hero'); handleUpload(e); }} />
+            </label>
+          </div>
+          {images.hero && (
+            <div className="mt-2 w-32 h-20 rounded-lg overflow-hidden bg-muted">
+              <Image src={images.hero as string} alt="Hero" width={128} height={80} className="w-full h-full object-cover" />
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">О нас изображение</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={(images.about as string) || ''}
+              onChange={(e) => handleImageUrlChange('about', e.target.value)}
+              placeholder="/images/about.jpg"
+              className="flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+            />
+            <label className="px-3 py-2 text-sm font-medium rounded-lg bg-muted hover:bg-muted/80 cursor-pointer flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { setUploadType('about'); handleUpload(e); }} />
+            </label>
+          </div>
+          {images.about && (
+            <div className="mt-2 w-32 h-20 rounded-lg overflow-hidden bg-muted">
+              <Image src={images.about as string} alt="About" width={128} height={80} className="w-full h-full object-cover" />
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={handleSaveUrls}
+          disabled={saving}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-[#b8983f] transition-all disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" />
+          {saving ? 'Сохранение...' : 'Сохранить URL'}
+        </button>
+      </div>
+
+      {/* Gallery */}
+      <div className="space-y-4 border-t border-border pt-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-foreground">Галерея работ ({galleryImages.length})</h4>
+          <label className={`px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-[#b8983f] cursor-pointer flex items-center gap-2 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Добавить
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { setUploadType('gallery'); handleUpload(e); }} disabled={uploading} />
+          </label>
+        </div>
+
+        {galleryImages.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">Нет изображений в галерее</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            {galleryImages.map((url, index) => (
+              <div key={index} className="relative group aspect-square rounded-lg overflow-hidden bg-muted">
+                <Image src={url} alt={`Gallery ${index + 1}`} fill className="object-cover" />
+                <button
+                  onClick={() => handleDeleteGalleryImage(url)}
+                  className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

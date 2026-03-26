@@ -1,11 +1,21 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
 
 interface ContactsProps {
   onFormSuccess: () => void
+}
+
+interface ContactData {
+  phone: string
+  telegram: string
+  email: string
+  whatsapp: string
+  whatsapp_message: string
+  address: string
+  work_hours: string
 }
 
 export default function Contacts({ onFormSuccess }: ContactsProps) {
@@ -16,6 +26,22 @@ export default function Contacts({ onFormSuccess }: ContactsProps) {
     consent: false,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
+  const [contacts, setContacts] = useState<ContactData | null>(null)
+
+  // Load contacts from API
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const res = await fetch('/api/data')
+        const data = await res.json()
+        setContacts(data.contacts)
+      } catch (err) {
+        console.error('Error loading contacts:', err)
+      }
+    }
+    loadContacts()
+  }, [])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -39,24 +65,61 @@ export default function Contacts({ onFormSuccess }: ContactsProps) {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
-    if (validateForm()) {
+    if (!validateForm()) return
+
+    setSubmitting(true)
+
+    try {
+      // Submit application to API
+      const res = await fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          contact: formData.contact.trim(),
+          course: formData.course || 'not_specified',
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Ошибка отправки')
+      }
+
+      // Set flag that user is going to WhatsApp (for review popup)
+      localStorage.setItem('visitedWhatsApp', 'true')
+
       // Generate WhatsApp link
       const courseText = formData.course ? ` Интересует курс: ${formData.course.toUpperCase()}` : ''
       const message = `Здравствуйте! Меня зовут ${formData.name}.${courseText}. Хочу записаться на курс.`
-      const whatsappLink = `https://wa.me/79001234567?text=${encodeURIComponent(message)}`
-      
-      console.log('WhatsApp link:', whatsappLink)
+      const whatsappNumber = contacts?.whatsapp?.replace('https://wa.me/', '') || '79001234567'
+      const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
       
       // Reset form
       setFormData({ name: '', contact: '', course: '', consent: false })
       
       // Show thank you
       onFormSuccess()
+
+      // Open WhatsApp after delay
+      setTimeout(() => {
+        window.open(whatsappLink, '_blank')
+      }, 1500)
+    } catch (err) {
+      console.error('Error submitting application:', err)
+      setErrors({ submit: 'Ошибка отправки. Попробуйте еще раз.' })
     }
+
+    setSubmitting(false)
   }
+
+  const phone = contacts?.phone || '+7 (900) 123-45-67'
+  const telegram = contacts?.telegram || '@nailmaster_courses'
+  const email = contacts?.email || 'info@nailmaster-courses.ru'
+  const whatsapp = contacts?.whatsapp || 'https://wa.me/79001234567'
+  const whatsappMessage = contacts?.whatsapp_message || 'Здравствуйте! Хочу узнать о курсах'
 
   return (
     <section id="contacts" className="py-20 md:py-[100px] bg-secondary">
@@ -85,12 +148,13 @@ export default function Contacts({ onFormSuccess }: ContactsProps) {
               <div>
                 <h4 className="text-base font-semibold text-foreground mb-1">WhatsApp</h4>
                 <a
-                  href="https://wa.me/79001234567?text=Здравствуйте!%20Хочу%20узнать%20о%20курсах"
+                  href={`${whatsapp}?text=${encodeURIComponent(whatsappMessage)}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => localStorage.setItem('visitedWhatsApp', 'true')}
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
-                  +7 (900) 123-45-67
+                  {phone}
                 </a>
               </div>
             </div>
@@ -105,12 +169,12 @@ export default function Contacts({ onFormSuccess }: ContactsProps) {
               <div>
                 <h4 className="text-base font-semibold text-foreground mb-1">Telegram</h4>
                 <a
-                  href="https://t.me/nailmaster_courses"
+                  href={`https://t.me/${telegram.replace('@', '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
-                  @nailmaster_courses
+                  {telegram}
                 </a>
               </div>
             </div>
@@ -126,10 +190,10 @@ export default function Contacts({ onFormSuccess }: ContactsProps) {
               <div>
                 <h4 className="text-base font-semibold text-foreground mb-1">Email</h4>
                 <a
-                  href="mailto:info@nailmaster-courses.ru"
+                  href={`mailto:${email}`}
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
-                  info@nailmaster-courses.ru
+                  {email}
                 </a>
               </div>
             </div>
@@ -216,12 +280,14 @@ export default function Contacts({ onFormSuccess }: ContactsProps) {
               </label>
             </div>
             {errors.consent && <span className="text-destructive text-sm mb-4 block">{errors.consent}</span>}
+            {errors.submit && <span className="text-destructive text-sm mb-4 block">{errors.submit}</span>}
 
             <button
               type="submit"
-              className="w-full px-8 py-4 text-base font-medium rounded-full bg-primary text-primary-foreground hover:bg-[#b8983f] transition-all"
+              disabled={submitting}
+              className="w-full px-8 py-4 text-base font-medium rounded-full bg-primary text-primary-foreground hover:bg-[#b8983f] transition-all disabled:opacity-50"
             >
-              Отправить заявку
+              {submitting ? 'Отправка...' : 'Отправить заявку'}
             </button>
           </form>
         </div>

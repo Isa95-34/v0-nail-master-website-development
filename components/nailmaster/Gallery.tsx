@@ -3,21 +3,27 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { X } from 'lucide-react'
-
-const galleryItems = [
-  { src: '/images/gallery-1.jpg', alt: 'Работа выпускницы - маникюр' },
-  { src: '/images/gallery-2.jpg', alt: 'Работа выпускницы - дизайн ногтей' },
-  { src: '/images/gallery-3.jpg', alt: 'Работа выпускницы - французский маникюр' },
-  { src: '/images/gallery-4.jpg', alt: 'Работа выпускницы - градиент' },
-  { src: '/images/gallery-5.jpg', alt: 'Работа выпускницы - нюдовый маникюр' },
-  { src: '/images/gallery-6.jpg', alt: 'Работа выпускницы - арт дизайн' },
-  { src: '/images/gallery-7.jpg', alt: 'Работа выпускницы - стразы' },
-  { src: '/images/gallery-8.jpg', alt: 'Работа выпускницы - геометрия' },
-]
+import { useContent, useImages } from '@/context/SiteDataContext'
 
 export default function Gallery() {
+  const { content } = useContent()
+  const { images, isLoading } = useImages()
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [currentImage, setCurrentImage] = useState<string | null>(null)
+
+  // Default values
+  const title = content?.gallery_title || 'Работы наших учениц'
+  const subtitle = content?.gallery_subtitle || 'Результаты после прохождения курса'
+  const galleryImages = images?.gallery || [
+    '/images/gallery-1.jpg',
+    '/images/gallery-2.jpg',
+    '/images/gallery-3.jpg',
+    '/images/gallery-4.jpg',
+    '/images/gallery-5.jpg',
+    '/images/gallery-6.jpg',
+    '/images/gallery-7.jpg',
+    '/images/gallery-8.jpg',
+  ]
 
   const openLightbox = (src: string) => {
     setCurrentImage(src)
@@ -40,27 +46,30 @@ export default function Gallery() {
             <span className="inline-block px-4 py-1.5 bg-accent text-accent-foreground text-[13px] font-semibold uppercase tracking-wider rounded-full mb-4">
               Галерея
             </span>
-            <h2 className="mb-4 text-balance">Работы наших выпускниц</h2>
+            <h2 className="mb-4 text-balance">{title}</h2>
             <p className="text-[17px] max-w-[600px] mx-auto">
-              Результаты обучения на наших курсах
+              {subtitle}
             </p>
           </div>
 
           {/* Grid */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
-            {galleryItems.map((item) => (
+            {galleryImages.map((src, index) => (
               <button
-                key={item.src}
-                onClick={() => openLightbox(item.src)}
+                key={index}
+                onClick={() => openLightbox(src)}
                 className="relative rounded-xl overflow-hidden aspect-square cursor-pointer group"
               >
                 <Image
-                  src={item.src}
-                  alt={item.alt}
+                  src={src}
+                  alt={`Работа выпускницы ${index + 1}`}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/20 transition-colors" />
+                {isLoading && (
+                  <div className="absolute inset-0 bg-muted animate-pulse" />
+                )}
               </button>
             ))}
           </div>

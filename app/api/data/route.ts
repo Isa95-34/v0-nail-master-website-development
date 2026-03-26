@@ -3,16 +3,38 @@ import { promises as fs } from 'fs'
 import path from 'path'
 
 const DB_PATH = path.join(process.cwd(), 'data', 'db.json')
+const ADMIN_PASSWORD = 'admin123'
 
-async function readDB() {
+interface DBData {
+  content: Record<string, unknown>
+  courses: Record<string, unknown>
+  contacts: Record<string, unknown>
+  images: Record<string, unknown>
+  blog: unknown[]
+  faq: unknown[]
+  reviews: unknown[]
+  applications: unknown[]
+}
+
+async function readDB(): Promise<DBData> {
   const data = await fs.readFile(DB_PATH, 'utf-8')
   return JSON.parse(data)
 }
 
-async function writeDB(data: Record<string, unknown>) {
+async function writeDB(data: DBData) {
   await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2), 'utf-8')
 }
 
+function verifyPassword(request: Request): boolean {
+  const authHeader = request.headers.get('Authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return false
+  }
+  const password = authHeader.substring(7)
+  return password === ADMIN_PASSWORD
+}
+
+// GET - Public access to all data
 export async function GET() {
   try {
     const data = await readDB()
@@ -23,26 +45,27 @@ export async function GET() {
   }
 }
 
+// PUT - Admin only: Update content, courses, contacts, images
 export async function PUT(request: Request) {
   try {
-    const body = await request.json()
-    const { password, ...updates } = body
-
-    // Simple password check
-    if (password !== 'admin123') {
+    if (!verifyPassword(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const body = await request.json()
     const db = await readDB()
     
     // Merge updates into database
-    const updatedDB = {
+    const updatedDB: DBData = {
       ...db,
-      ...updates,
-      content: { ...db.content, ...updates.content },
-      courses: { ...db.courses, ...updates.courses },
-      contacts: { ...db.contacts, ...updates.contacts },
-      images: { ...db.images, ...updates.images },
+      content: body.content ? { ...db.content, ...body.content } : db.content,
+      courses: body.courses ? { ...db.courses, ...body.courses } : db.courses,
+      contacts: body.contacts ? { ...db.contacts, ...body.contacts } : db.contacts,
+      images: body.images ? { ...db.images, ...body.images } : db.images,
+      blog: body.blog ?? db.blog,
+      faq: body.faq ?? db.faq,
+      reviews: body.reviews ?? db.reviews,
+      applications: body.applications ?? db.applications,
     }
 
     await writeDB(updatedDB)

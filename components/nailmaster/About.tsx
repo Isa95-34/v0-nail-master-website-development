@@ -1,27 +1,40 @@
+'use client'
+
 import Image from 'next/image'
 import { Check } from 'lucide-react'
-
-const features = [
-  'Видеоуроки в HD-качестве',
-  'Проверка домашних заданий',
-  'Личный куратор',
-  'Сертификат по окончании',
-]
+import { useContent, useImages } from '@/context/SiteDataContext'
 
 export default function About() {
+  const { content, isLoading } = useContent()
+  const { images } = useImages()
+
+  // Default values
+  const title = content?.about_title || 'О нашей школе'
+  const text = content?.about_text || 'NailMaster — это онлайн-школа маникюра, где вы получите все необходимые знания и навыки для старта карьеры мастера.'
+  const features = content?.about_features || [
+    'Обучение с нуля до профессионала',
+    'Практические задания с обратной связью',
+    'Сертификат по окончании курса',
+    'Поддержка кураторов 24/7'
+  ]
+  const aboutImage = images?.about || '/images/about.jpg'
+
   return (
     <section id="about" className="py-20 md:py-[100px] bg-secondary">
       <div className="container mx-auto px-5 md:px-10">
         <div className="grid gap-10 items-center lg:grid-cols-2 lg:gap-20">
           {/* Image */}
-          <div className="rounded-2xl overflow-hidden shadow-xl">
+          <div className="rounded-2xl overflow-hidden shadow-xl relative">
             <Image
-              src="/images/about.jpg"
+              src={aboutImage}
               alt="Об обучении маникюру"
               width={600}
               height={450}
               className="w-full h-auto aspect-[4/3] object-cover"
             />
+            {isLoading && (
+              <div className="absolute inset-0 bg-muted animate-pulse" />
+            )}
           </div>
 
           {/* Content */}
@@ -30,19 +43,16 @@ export default function About() {
               О нас
             </span>
             <h2 className="text-left mb-6 text-balance">
-              Профессиональное обучение маникюру онлайн
+              {title}
             </h2>
-            <p className="mb-4">
-              Наша школа помогает начинающим мастерам освоить профессию маникюра с нуля. Мы разработали уникальную программу обучения, которая позволяет получить все необходимые навыки за 4 недели интенсивной практики.
-            </p>
             <p className="mb-6">
-              Каждый урок — это практика с обратной связью от профессионального куратора. Вы научитесь работать с клиентами, освоите современные техники и сможете начать зарабатывать сразу после окончания курса.
+              {text}
             </p>
 
             {/* Feature List */}
             <ul className="grid gap-3">
-              {features.map((feature) => (
-                <li key={feature} className="flex items-center gap-3 text-foreground">
+              {features.map((feature, index) => (
+                <li key={index} className="flex items-center gap-3 text-foreground">
                   <span className="flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground text-xs rounded-full shrink-0">
                     <Check className="w-3.5 h-3.5" />
                   </span>

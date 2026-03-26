@@ -5,65 +5,16 @@ import Image from 'next/image'
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
 
 export interface Review {
-  id: string
+  id: string | number
   name: string
   course: string
   text: string
   rating: number
   avatar?: string
+  image?: string
   isUserReview?: boolean
+  approved?: boolean
 }
-
-const defaultReviews: Review[] = [
-  {
-    id: '1',
-    name: 'Анна К.',
-    course: 'Курс PRO',
-    text: 'Прошла курс PRO и уже через месяц после окончания начала принимать клиентов. Очень понятная подача материала, куратор всегда на связи. Рекомендую всем, кто хочет освоить новую профессию!',
-    rating: 5,
-    avatar: '/images/review-1.jpg',
-  },
-  {
-    id: '2',
-    name: 'Мария С.',
-    course: 'Курс VIP',
-    text: 'Взяла VIP тариф и не пожалела! Личные созвоны очень помогли разобраться в сложных техниках. Сейчас у меня своя клиентская база, и я зарабатываю больше, чем на прежней работе.',
-    rating: 5,
-    avatar: '/images/review-2.jpg',
-  },
-  {
-    id: '3',
-    name: 'Елена Д.',
-    course: 'Курс START',
-    text: 'Начала с курса START, чтобы понять, моё ли это. Оказалось — моё! Теперь делаю маникюр себе и подругам, планирую продолжить обучение на PRO.',
-    rating: 5,
-    avatar: '/images/review-3.jpg',
-  },
-  {
-    id: '4',
-    name: 'Ольга М.',
-    course: 'Курс PRO',
-    text: 'Отличный курс! Всё объясняется пошагово, много практики. Особенно понравился модуль по работе с клиентами — это то, чего не хватает на других курсах.',
-    rating: 5,
-    avatar: '/images/review-4.jpg',
-  },
-  {
-    id: '5',
-    name: 'Наталья В.',
-    course: 'Курс VIP',
-    text: 'Благодаря курсу полностью сменила профессию. Из офиса ушла в beauty-сферу и очень счастлива! Спасибо за качественное обучение и поддержку.',
-    rating: 5,
-    avatar: '/images/review-5.jpg',
-  },
-  {
-    id: '6',
-    name: 'Ирина Б.',
-    course: 'Курс PRO',
-    text: 'Очень довольна результатом! Уроки записаны профессионально, всё видно в деталях. Домашние задания проверяют тщательно, дают полезные рекомендации.',
-    rating: 5,
-    avatar: '/images/review-6.jpg',
-  },
-]
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -78,18 +29,32 @@ function StarRating({ rating }: { rating: number }) {
   )
 }
 
+const courseNames: Record<string, string> = {
+  start: 'Курс START',
+  pro: 'Курс PRO',
+  vip: 'Курс VIP',
+  general: 'Пользователь',
+}
+
 export default function Reviews() {
-  const [reviews, setReviews] = useState<Review[]>(defaultReviews)
+  const [reviews, setReviews] = useState<Review[]>([])
   const [currentSlide, setCurrentSlide] = useState(0)
   const [slidesPerView, setSlidesPerView] = useState(1)
+  const [loading, setLoading] = useState(true)
 
-  // Load user reviews from localStorage
+  // Load reviews from API
   useEffect(() => {
-    const savedReviews = localStorage.getItem('userReviews')
-    if (savedReviews) {
-      const userReviews: Review[] = JSON.parse(savedReviews)
-      setReviews([...defaultReviews, ...userReviews])
+    const loadReviews = async () => {
+      try {
+        const res = await fetch('/api/reviews')
+        const data = await res.json()
+        setReviews(data)
+      } catch (err) {
+        console.error('Error loading reviews:', err)
+      }
+      setLoading(false)
     }
+    loadReviews()
   }, [])
 
   // Update slides per view based on window width
@@ -125,9 +90,46 @@ export default function Reviews() {
 
   // Auto-advance slider
   useEffect(() => {
+    if (reviews.length === 0) return
     const interval = setInterval(nextSlide, 5000)
     return () => clearInterval(interval)
-  }, [nextSlide])
+  }, [nextSlide, reviews.length])
+
+  if (loading) {
+    return (
+      <section id="reviews" className="py-20 md:py-[100px] bg-secondary">
+        <div className="container mx-auto px-5 md:px-10">
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 bg-accent text-accent-foreground text-[13px] font-semibold uppercase tracking-wider rounded-full mb-4">
+              Отзывы
+            </span>
+            <h2 className="mb-4 text-balance">Что говорят наши выпускники</h2>
+          </div>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <section id="reviews" className="py-20 md:py-[100px] bg-secondary">
+        <div className="container mx-auto px-5 md:px-10">
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 bg-accent text-accent-foreground text-[13px] font-semibold uppercase tracking-wider rounded-full mb-4">
+              Отзывы
+            </span>
+            <h2 className="mb-4 text-balance">Что говорят наши выпускники</h2>
+            <p className="text-[17px] max-w-[600px] mx-auto">
+              Отзывов пока нет. Будьте первым!
+            </p>
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section id="reviews" className="py-20 md:py-[100px] bg-secondary">
@@ -156,9 +158,9 @@ export default function Reviews() {
                 style={{ width: `calc(${100 / slidesPerView}% - ${(24 * (slidesPerView - 1)) / slidesPerView}px)` }}
               >
                 <div className="flex items-center gap-4 mb-4">
-                  {review.avatar ? (
+                  {(review.avatar || review.image) ? (
                     <Image
-                      src={review.avatar}
+                      src={review.avatar || review.image || ''}
                       alt={review.name}
                       width={56}
                       height={56}
@@ -171,7 +173,9 @@ export default function Reviews() {
                   )}
                   <div>
                     <span className="block font-semibold text-foreground">{review.name}</span>
-                    <span className="text-sm text-muted-foreground">{review.course}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {courseNames[review.course] || review.course}
+                    </span>
                   </div>
                 </div>
                 <p className="text-[15px] leading-relaxed mb-4">{review.text}</p>
